@@ -1,0 +1,3 @@
+GXX=g++
+CXXFLAGS   += -std=c++11 -Wall
+#LINK_FLAGS := -Wl,--no-demangle

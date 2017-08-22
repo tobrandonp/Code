@@ -1,0 +1,51 @@
+
+DEPDIR := $(TARGET_DIR)/.d
+$(shell mkdir -p $(DEPDIR) >/dev/null)
+DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
+
+#Order Only Prerequisite so we don't link every time we create dir
+$(EXT_OBJS): | TARGET_DIR_CREATE
+
+
+CXX_RULE=$(CXX) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
+POSTCOMPILE = @mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d && touch $@
+
+
+
+# Executable dependencies and linkage
+$(EXEC_TARGET): $(EXT_OBJS) $(OBJS)
+	@echo "Linking $(EXEC_TARGET)"
+	$(GXX) $(LINK_FLAGS) -o  $(EXEC_TARGET) $(EXT_OBJS) $(OBJS)
+
+
+# Pattern rule for $(OBJS)
+$(TARGET_DIR)/%.o: %.cpp $(DEPDIR)/%.d
+	@echo "Compiling $@"
+	$(CXX_RULE)
+	$(POSTCOMPILE)
+
+# Pattern rule for $(EXT_OBJS):
+$(TARGET_DIR)/%.o: $(dir $(EXT_SRCS))%.cpp $(DEPDIR)/%.d
+	@echo "Compiling $(DEPDIR)/%.d"
+	$(CXX_RULE)
+	$(POSTCOMPILE)
+
+# Create our object directory
+TARGET_DIR_CREATE:
+	$(shell mkdir -p $(TARGET_DIR) >/dev/null)
+
+
+clean:
+	rm -f $(EXEC_TARGET) $(OBJS) $(TARGET_DIR)/*.d $(EXT_OBJS)
+	rm -rf $(TARGET_DIR)
+
+
+# Create a pattern rule with an empty recipe, so that make won’t fail if the dependency file doesn’t exist.
+$(DEPDIR)/%.d: ;
+
+# Mark the dependency files precious to make, so they won’t be automatically deleted as intermediate files.
+.PRECIOUS: $(DEPDIR)/%.d
+
+
+# Include the dependency files that exist:
+include $(wildcard $(patsubst %,$(DEPDIR)/%.d,$(basename $(SRCS))))
